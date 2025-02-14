@@ -44,13 +44,13 @@ fn handle_connection(mut stream: TcpStream) {
     // .collect();
 
     let (status_line, filename) = match &request_line[..] {
-        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
+        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "pages/hello.html"),
         // A simulated slow response
         "GET /sleep HTTP/1.1" => {
             thread::sleep(Duration::from_secs(5));
-            ("HTTP/1.1 200 OK", "hello.html")
+            ("HTTP/1.1 200 OK", "pages/sleep.html")
         }
-        _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+        _ => ("HTTP/1.1 404 NOT FOUND", "pages/404.html"),
     };
     // HTTP Response:
     // 1: HTTP-Version Status-Code Reason-Phrase CRLF

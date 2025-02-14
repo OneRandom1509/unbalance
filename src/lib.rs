@@ -50,7 +50,7 @@ impl ThreadPool {
             // Multiple ownership being done here as the Arc gets bumped up for each worker
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
-        println!("{size} workers at your service!");
+        println!("{size} workers at your service!\nHead over to http://127.0.0.1:7878");
         Ok(ThreadPool {
             workers,
             sender: Some(sender),
