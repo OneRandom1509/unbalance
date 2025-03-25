@@ -581,6 +581,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
 
 [[package]]
+name = "load-balancer"
+version = "0.1.0"
+dependencies = [
+ "dotenv",
+ "env",
+ "reqwest",
+]
+
+[[package]]
 name = "log"
 version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1305,15 +1314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "web-server"
-version = "0.1.0"
-dependencies = [
- "dotenv",
- "env",
- "reqwest",
-]
-
-[[package]]
 name = "web-sys"
 version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1443,6 +1443,10 @@ checksum = "3268f3d866458b787f390cf61f4bbb563b922d091359f9608842999eaee3943c"
 dependencies = [
  "bitflags",
 ]
+
+[[package]]
+name = "worker"
+version = "0.1.0"
 
 [[package]]
 name = "write16"

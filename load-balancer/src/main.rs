@@ -1,71 +1,58 @@
+use dotenv::dotenv;
 use std::{
-    env, fs,process,
+    collections::HashMap,
+    env, fs,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
-    thread,
-    time::Duration,
-    collections::HashMap
+    process,
 };
-use dotenv::dotenv;
-mod scheduling;
-use scheduling::round_robin_scheduler;
 mod health_checker;
+mod scheduling;
 use health_checker::check_health;
-use web_server::ThreadPool;
+use load_balancer::ThreadPool;
 
-pub struct Message{
-    pub message:String,
-    pub worker_addr:String,
-    pub client_addr:String,
+pub struct Message {
+    pub message: String,
+    pub worker_addr: String,
+    pub client_addr: String,
 }
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_threads: usize = args[1].parse().unwrap();
-    let num_workers: usize = 4;
-    let listener:TcpListener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool:ThreadPool = ThreadPool::new(num_workers).unwrap();
-    let env_variable = dotenv().ok();
-    let mut client_worker_map:HashMap<String,String> = HashMap::new();
 
-    
+    let worker: String = fs::read_to_string(".env").unwrap();
+    let worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
 
+    let num_workers = worker_list.len();
+    let listener: TcpListener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool: ThreadPool = ThreadPool::new(num_workers).unwrap();
+    //  let mut client_worker_map: HashMap<String, String> = HashMap::new();
 
-    if !env_variable {
-        println!("env variable WORKER_NODES has not been set");
-        process::exit(1);
-    }
-
-    let worker:String = env::var("WORKER_NODES").unwrap();
-    let worker_list:Vec<String> = worker.split(',').map(String::from).collect();
-
-    if worker.len()>num_workers{
-        eprintln!("The number of worker are execeeding the given limit");
-        process::exit(1);
-    }
-
-    let worker:i32 = 0;
+    check_health(worker_list.clone());
+    let mut worker: usize = 0;
     // To invoke the drop function of the ThreadPool, use listener.incoming.take(n) where n is the
     // maximum number of incoming requests you want to process
     for stream in listener.incoming() {
         // handle_connection(worker);
-        // worker = (worker +1)% num_workers;
         let stream = stream.unwrap();
         // An example of creating theads for each incoming stream
         // This is a really bad idea as it can overload the system with a lot of threads and create
         // issues in case of a DDoS attack. We would need a finite number of threads (a thread pool) to manage this problem
         // thread::spawn(|| handle_connection(stream));
 
-        pool.execute(|| {
-            handle_connection(stream,worker_list,&mut client_worker_map);
-
-
+        // think of a better way to handle this, cloning everything everytime is kinda bad
+        let worker_id = worker.clone();
+        let worker_list_cl = worker_list.clone();
+        pool.execute(move || {
+            handle_connection(stream, worker_id, worker_list_cl);
         });
+
+        worker = (worker + 1) % num_workers;
         // This is the health checker function runs on a separate thread;
-        let health_monitor = thread::spawn(||{
-          check_health(worker_list);
-          std::thread::sleep(Duration::from_secs(10));
-      
-        });
+        // let health_monitor = thread::spawn(|| {
+        //     check_health(worker_list);
+        //     std::thread::sleep(Duration::from_secs(10));
+        // });
     }
     println!("Shutting down.");
 }
@@ -106,16 +93,27 @@ fn main() {
     stream.write_all(response.as_bytes()).unwrap();
 }
 */
-fn handle_connection(mut stream:TcpStream, worker_list:Vec<String>, client_worker_map:&mut HashMap<String,String>){ 
+fn handle_connection(mut stream: TcpStream, worker_id: usize, worker_list: Vec<String>) {
     let buf_reader = BufReader::new(&stream);
     let request_message = buf_reader.lines().next().unwrap().unwrap();
-    let client_addr:String = stream.peer_addr().unwrap().to_string();
-    let worker_addr:String = worker_list[0];
-    client_worker_map.insert(client_addr,worker_addr);
-    let message:Message = Message{
-        message:request_message,
-        worker_addr:worker_addr,
-        client_addr:client_addr,
+    let client_addr = stream.peer_addr().unwrap().to_string();
+    let worker_addr = worker_list[worker_id].clone();
+    // client_worker_map.insert(client_addr, worker_addr);
+    let message: Message = Message {
+        message: request_message,
+        worker_addr: worker_addr.clone(),
+        client_addr: client_addr.clone(),
     };
-    round_robin_scheduler(worker_list,message);
+    let response = send_job(client_addr, message);
+    stream.write_all(response.as_bytes()).unwrap();
+}
+
+fn send_job(client_addr: String, message: Message) -> String {
+    let mut worker_connection = TcpStream::connect(client_addr).unwrap();
+    worker_connection
+        .write_all(message.message.as_bytes())
+        .unwrap();
+    let mut response = String::new();
+    worker_connection.read_to_string(&mut response);
+    response
 }
