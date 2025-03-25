@@ -1,5 +1,4 @@
-use std::net::{SocketAddr, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::net::TcpStream;
 use std::thread;
 use std::time;
 
