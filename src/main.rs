@@ -1,21 +1,54 @@
 use std::{
-    env, fs,
+    env, fs,process,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
     thread,
     time::Duration,
+    collections::HashMap
 };
+use dotenv::dotenv;
+mod scheduling;
+use scheduling::round_robin_scheduler;
+mod health_checker;
+use health_checker::check_health;
 use web_server::ThreadPool;
 
+pub struct Message{
+    pub message:String,
+    pub worker_addr:String,
+    pub client_addr:String,
+}
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let num_threads: usize = args[1].parse().unwrap();
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::new(num_threads).unwrap();
+    //let args: Vec<String> = env::args().collect();
+    //let num_threads: usize = args[1].parse().unwrap();
+    let num_workers: usize = 4;
+    let listener:TcpListener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool:ThreadPool = ThreadPool::new(num_workers).unwrap();
+    let env_variable = dotenv().ok();
+    let mut client_worker_map:HashMap<String,String> = HashMap::new();
 
+    
+
+
+    if !env_variable {
+        println!("env variable WORKER_NODES has not been set");
+        process::exit(1);
+    }
+
+    let worker:String = env::var("WORKER_NODES").unwrap();
+    let worker_list:Vec<String> = worker.split(',').map(String::from).collect();
+
+    if worker.len()>num_workers{
+        eprintln!("The number of worker are execeeding the given limit");
+        process::exit(1);
+    }
+
+    let worker:i32 = 0;
     // To invoke the drop function of the ThreadPool, use listener.incoming.take(n) where n is the
     // maximum number of incoming requests you want to process
     for stream in listener.incoming() {
+        // handle_connection(worker);
+        // worker = (worker +1)% num_workers;
         let stream = stream.unwrap();
         // An example of creating theads for each incoming stream
         // This is a really bad idea as it can overload the system with a lot of threads and create
@@ -23,13 +56,21 @@ fn main() {
         // thread::spawn(|| handle_connection(stream));
 
         pool.execute(|| {
-            handle_connection(stream);
+            handle_connection(stream,worker_list,&mut client_worker_map);
+
+
+        });
+        // This is the health checker function runs on a separate thread;
+        let health_monitor = thread::spawn(||{
+          check_health(worker_list);
+          std::thread::sleep(Duration::from_secs(10));
+      
         });
     }
     println!("Shutting down.");
 }
 
-fn handle_connection(mut stream: TcpStream) {
+/*fn handle_connection(mut stream: TcpStream) {
     let buf_reader = BufReader::new(&stream);
     let request_line = buf_reader.lines().next().unwrap().unwrap();
 
@@ -63,4 +104,18 @@ fn handle_connection(mut stream: TcpStream) {
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
     stream.write_all(response.as_bytes()).unwrap();
+}
+*/
+fn handle_connection(mut stream:TcpStream, worker_list:Vec<String>, client_worker_map:&mut HashMap<String,String>){ 
+    let buf_reader = BufReader::new(&stream);
+    let request_message = buf_reader.lines().next().unwrap().unwrap();
+    let client_addr:String = stream.peer_addr().unwrap().to_string();
+    let worker_addr:String = worker_list[0];
+    client_worker_map.insert(client_addr,worker_addr);
+    let message:Message = Message{
+        message:request_message,
+        worker_addr:worker_addr,
+        client_addr:client_addr,
+    };
+    round_robin_scheduler(worker_list,message);
 }
