@@ -1,10 +1,7 @@
-use dotenv::dotenv;
 use std::{
-    collections::HashMap,
     env, fs,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
-    process,
 };
 mod health_checker;
 mod scheduling;
@@ -19,7 +16,7 @@ pub struct Message {
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let num_threads: usize = args[1].parse().unwrap();
-
+    let args: Vec<String> = env::args().collect();
     let worker: String = fs::read_to_string(".env").unwrap();
     let mut worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
     worker_list.remove(worker_list.len() - 1);
@@ -28,7 +25,12 @@ fn main() {
     let pool: ThreadPool = ThreadPool::new(num_workers).unwrap();
     //  let mut client_worker_map: HashMap<String, String> = HashMap::new();
 
-    check_health(worker_list.clone());
+    if args.len() > 1 {
+        if args[1] == "-h" || args[1] == "--health-worker" {
+            println!("Health mode on!");
+            check_health(worker_list.clone());
+        }
+    }
     let mut worker: usize = 0;
     // To invoke the drop function of the ThreadPool, use listener.incoming.take(n) where n is the
     // maximum number of incoming requests you want to process
@@ -115,6 +117,7 @@ fn send_job(client_addr: String, message: Message) -> String {
         .write_all(message.message.as_bytes())
         .unwrap();
     worker_connection.flush().unwrap();
+    println!("Send a message");
     let mut response = String::new();
     let _ = worker_connection.read_to_string(&mut response);
     println!("received response {}", &response);

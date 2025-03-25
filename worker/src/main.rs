@@ -18,10 +18,9 @@ fn main() {
 
 fn generate_response(mut stream: TcpStream) {
     println!("am here generating a repsonse");
-    let mut buf_reader = BufReader::new(&stream);
-    let mut request_buf = String::new();
-    buf_reader.read_to_string(&mut request_buf).unwrap();
-    let request_line = request_buf.clone();
+    let mut buffer = [0; 1024];
+    let size = stream.read(&mut buffer).unwrap();
+    let request_line = String::from_utf8_lossy(&buffer[..size]);
     println!("read somethign {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
