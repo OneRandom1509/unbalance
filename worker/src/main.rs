@@ -1,38 +1,26 @@
 use std::{
-    env, fs,
-    io::{prelude::*, BufReader},
+    self, fs,
+    io::{Read, Write},
     net::{TcpListener, TcpStream},
     thread,
     time::Duration,
 };
-use web_server::ThreadPool;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let num_threads: usize = args[1].parse().unwrap();
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::new(num_threads).unwrap();
+    let listener = TcpListener::bind("0.0.0.0:3242").unwrap();
 
-    // To invoke the drop function of the ThreadPool, use listener.incoming.take(n) where n is the
-    // maximum number of incoming requests you want to process
     for stream in listener.incoming() {
+        println!("New stream received!");
         let stream = stream.unwrap();
-        // An example of creating theads for each incoming stream
-        // This is a really bad idea as it can overload the system with a lot of threads and create
-        // issues in case of a DDoS attack. We would need a finite number of threads (a thread pool) to manage this problem
-        // thread::spawn(|| handle_connection(stream));
-
-        pool.execute(|| {
-            handle_connection(stream);
-        });
+        generate_response(stream);
     }
-    println!("Shutting down.");
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
-
+fn generate_response(mut stream: TcpStream) {
+    let mut buffer = [0; 1024];
+    let size = stream.read(&mut buffer).unwrap();
+    let request_line = String::from_utf8_lossy(&buffer[..size]);
+    println!("Request received!: {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
     // 2: headers CRLF
@@ -63,4 +51,6 @@ fn handle_connection(mut stream: TcpStream) {
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
     stream.write_all(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+    println!("Sent response!");
 }
