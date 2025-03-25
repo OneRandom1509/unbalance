@@ -1,6 +1,6 @@
 use std::{
     self, fs,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
     thread,
     time::Duration,
@@ -10,15 +10,19 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:3242").unwrap();
 
     for stream in listener.incoming() {
+        println!("woah hello there");
         let stream = stream.unwrap();
         generate_response(stream);
     }
 }
 
 fn generate_response(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
-
+    println!("am here generating a repsonse");
+    let mut buf_reader = BufReader::new(&stream);
+    let mut request_buf = String::new();
+    buf_reader.read_to_string(&mut request_buf).unwrap();
+    let request_line = request_buf.clone();
+    println!("read somethign {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
     // 2: headers CRLF
@@ -49,4 +53,6 @@ fn generate_response(mut stream: TcpStream) {
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
     stream.write_all(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+    println!("sent response");
 }

@@ -21,8 +21,8 @@ fn main() {
     //let num_threads: usize = args[1].parse().unwrap();
 
     let worker: String = fs::read_to_string(".env").unwrap();
-    let worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
-
+    let mut worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
+    worker_list.remove(worker_list.len() - 1);
     let num_workers = worker_list.len();
     let listener: TcpListener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool: ThreadPool = ThreadPool::new(num_workers).unwrap();
@@ -104,16 +104,19 @@ fn handle_connection(mut stream: TcpStream, worker_id: usize, worker_list: Vec<S
         worker_addr: worker_addr.clone(),
         client_addr: client_addr.clone(),
     };
-    let response = send_job(client_addr, message);
+    let response = send_job(worker_addr, message);
     stream.write_all(response.as_bytes()).unwrap();
 }
 
 fn send_job(client_addr: String, message: Message) -> String {
+    println!("Trying to connect to..., {}", &client_addr);
     let mut worker_connection = TcpStream::connect(client_addr).unwrap();
     worker_connection
         .write_all(message.message.as_bytes())
         .unwrap();
+    worker_connection.flush().unwrap();
     let mut response = String::new();
-    worker_connection.read_to_string(&mut response);
+    let _ = worker_connection.read_to_string(&mut response);
+    println!("received response {}", &response);
     response
 }

@@ -11,8 +11,11 @@ pub fn check_health(workers: Vec<String>) {
             let worker: &String = &workers[worker_index];
             let worker_addr = worker;
             let health = TcpStream::connect(worker_addr).is_ok();
+
             if !health {
-                println!("Worker node at {} is down", worker);
+                println!("Worker node {} is down", worker);
+            } else {
+                println!("Worker node {} is up!", worker);
             }
             worker_index = (worker_index + 1) % worker_count;
             std::thread::sleep(time::Duration::from_secs(10));
