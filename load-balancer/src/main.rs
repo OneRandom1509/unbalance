@@ -22,8 +22,8 @@ fn main() {
     let pool: ThreadPool = ThreadPool::new(num_workers).unwrap();
 
     if args.len() > 1 {
-        if args[1] == "-h" || args[1] == "--health-worker" {
-            println!("Health mode on!");
+        if args[1] == "-h" || args[1] == "--health-checker" {
+            println!("Health checker mode on!");
             check_health(worker_list.clone());
         }
     }
