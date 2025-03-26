@@ -27,7 +27,7 @@ fn main() {
     let num_workers = worker_list.len();
     info!(name: "[FILE]", "Read {} addresses from {} file", &num_workers, &addr_file);
 
-    let listener: TcpListener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener: TcpListener = TcpListener::bind("0.0.0.0:7878").unwrap();
     info!(name: "[CLIENT LISTENER]", "Load balancer listening on port 7878!");
 
     let pool: ThreadPool = ThreadPool::new(num_workers).unwrap();
