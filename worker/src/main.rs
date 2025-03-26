@@ -25,7 +25,7 @@ fn generate_response(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     let size = stream.read(&mut buffer).unwrap();
     let request_line = String::from_utf8_lossy(&buffer[..size]);
-    info!(name: "[WORKER REQUEST]","Request received!: {}", &request_line);
+    info!(name: "[WORKER REQUEST]"," Request received!: {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
     // 2: headers CRLF
