@@ -12,10 +12,10 @@ fn main() {
     tracing_subscriber::fmt::init();
 
     let listener = TcpListener::bind("0.0.0.0:3242").unwrap();
-    info!(name: "[WORKER CONNECTED]", "Worker listnening in on port 3242");
+    info!(name: "[WORKER CONNECTED]", "Worker listening in on port 3242");
 
     for stream in listener.incoming() {
-        info!(name:"[WORKER STREAM]","New stream received!");
+        info!(name:"[WORKER STREAM]", "New stream received!");
         let stream = stream.unwrap();
         generate_response(stream);
     }
