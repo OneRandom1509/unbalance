@@ -1,3 +1,4 @@
+use core::fmt;
 use error::ThreadError;
 use std::{
     sync::{mpsc, Arc, Mutex},
@@ -6,6 +7,22 @@ use std::{
 use tracing::{error, info};
 pub mod error;
 pub mod tests;
+
+pub struct Message {
+    pub message: String,
+    pub worker_addr: String,
+    pub client_addr: String,
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "[MESSAGE]: message: {}\n\tworker_addr: {}\n\tclient_addr: {}\n\t",
+            self.message, self.worker_addr, self.client_addr
+        )
+    }
+}
 
 /// ThreadPool:
 /// Has two fields, workers and sender

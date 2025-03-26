@@ -1,19 +1,13 @@
 mod health_checker;
 use health_checker::check_health;
-use load_balancer::ThreadPool;
+use load_balancer::{Message, ThreadPool};
 use std::{
     env, fs,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
 };
-use tracing::info;
+use tracing::{debug, info};
 use tracing_subscriber;
-
-pub struct Message {
-    pub message: String,
-    pub worker_addr: String,
-    pub client_addr: String,
-}
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -67,11 +61,14 @@ fn handle_connection(mut stream: TcpStream, worker_id: usize, worker_list: Vec<S
     let client_addr = stream.peer_addr().unwrap().to_string();
     let worker_addr = worker_list[worker_id].clone();
     // client_worker_map.insert(client_addr, worker_addr);
+
     let message: Message = Message {
         message: request_message,
         worker_addr: worker_addr.clone(),
         client_addr: client_addr.clone(),
     };
+    debug!(name: "[MESSAGE]", "{}", &message);
+
     let response = forward_request(worker_addr, message);
     stream.write_all(response.as_bytes()).unwrap();
 }
