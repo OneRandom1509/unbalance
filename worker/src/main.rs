@@ -12,10 +12,10 @@ fn main() {
     tracing_subscriber::fmt::init();
 
     let listener = TcpListener::bind("0.0.0.0:3242").unwrap();
-    info!(name: "[WORKER CONNECTED]", "Worker listnening in on port 3242");
+    info!(name: "[WORKER CONNECTED]", "Worker listening in on port 3242");
 
     for stream in listener.incoming() {
-        info!(name:"[WORKER STREAM]","New stream received!");
+        info!(name:"[WORKER STREAM]", "New stream received!");
         let stream = stream.unwrap();
         generate_response(stream);
     }
@@ -25,7 +25,7 @@ fn generate_response(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     let size = stream.read(&mut buffer).unwrap();
     let request_line = String::from_utf8_lossy(&buffer[..size]);
-    info!(name: "[WORKER REQUEST]","Request received!: {}", &request_line);
+    info!(name: "[WORKER REQUEST]"," Request received!: {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
     // 2: headers CRLF
