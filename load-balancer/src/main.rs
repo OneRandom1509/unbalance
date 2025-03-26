@@ -14,6 +14,7 @@ pub struct Message {
     pub worker_addr: String,
     pub client_addr: String,
 }
+
 fn main() {
     tracing_subscriber::fmt::init();
 

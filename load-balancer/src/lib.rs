@@ -50,7 +50,7 @@ impl ThreadPool {
             // Multiple ownership being done here as the Arc gets bumped up for each worker
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
-        info!(name: "[LB THREADS INIT]", "{size} workers at your service!\nHead over to http://127.0.0.1:7878");
+        info!(name: "[LB THREADS INIT]", "{size} workers at your service!");
         Ok(ThreadPool {
             workers,
             sender: Some(sender),
