@@ -1,4 +1,4 @@
-# Unbalance
+# Unbalancr
 
 A multi-threaded load-balancer written in Rust.
 
