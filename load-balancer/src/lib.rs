@@ -1,9 +1,9 @@
+use error::ThreadError;
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
 };
-
-use error::ThreadError;
+use tracing::{error, info};
 pub mod error;
 pub mod tests;
 
@@ -50,7 +50,7 @@ impl ThreadPool {
             // Multiple ownership being done here as the Arc gets bumped up for each worker
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
-        println!("{size} workers at your service!\nHead over to http://127.0.0.1:7878");
+        info!(name: "[LB THREADS INIT]", "{size} workers at your service!\nHead over to http://127.0.0.1:7878");
         Ok(ThreadPool {
             workers,
             sender: Some(sender),
@@ -83,7 +83,7 @@ impl Drop for ThreadPool {
         // thread
         drop(self.sender.take());
         for worker in &mut self.workers {
-            println!("Shutting down worker {}", worker.id);
+            info!(name:"[LB THREAD DESTROY]","Shutting down worker {}", worker.id);
 
             // Takes ownership of the thread from the worker and leaves a None in its place in the
             // worker and waits for the thread to complete its job
@@ -130,12 +130,12 @@ impl Worker {
                     .recv();
                 match message {
                     Ok(job) => {
-                         println!("Worker {id} got a job; Executing...");
+                         info!(name: "[LB THREAD EXEC]", "Worker {id} got a job; Executing...");
                         job();
                     }
                     // Shutting down when the thread cannot find a sender
                     Err(_) => {
-                        println!("Cannot find sender\nWorker {id} disconnected; shutting down.");
+                        error!(name: "[LB THREAD ERROR]", "Cannot find sender\nWorker {id} disconnected; shutting down.");
                         break;
                     }
                 }

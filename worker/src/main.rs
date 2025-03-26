@@ -5,12 +5,16 @@ use std::{
     thread,
     time::Duration,
 };
+use tracing::info;
+use tracing_subscriber;
 
 fn main() {
+    tracing_subscriber::fmt::init();
+
     let listener = TcpListener::bind("0.0.0.0:3242").unwrap();
 
     for stream in listener.incoming() {
-        println!("New stream received!");
+        info!(name:"[WORKER STREAM]","New stream received!");
         let stream = stream.unwrap();
         generate_response(stream);
     }
@@ -20,7 +24,7 @@ fn generate_response(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     let size = stream.read(&mut buffer).unwrap();
     let request_line = String::from_utf8_lossy(&buffer[..size]);
-    println!("Request received!: {}", &request_line);
+    info!(name: "[WORKER REQUEST]","Request received!: {}", &request_line);
     // HTTP Request:
     // 1: Method Request-URI HTTP-Version CRLF
     // 2: headers CRLF
@@ -52,5 +56,5 @@ fn generate_response(mut stream: TcpStream) {
 
     stream.write_all(response.as_bytes()).unwrap();
     stream.flush().unwrap();
-    println!("Sent response!");
+    info!(name: "[WORKER RESPONSE]", "Sent response!");
 }
