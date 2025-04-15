@@ -104,12 +104,12 @@ impl ThreadPool {
         // Find the nearest worker on the hash ring
         match self.hash_ring.range(hash..).next() {
             Some((_, &worker_id)) => {
-                info!(name: "[HASH MATCH]", "Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
+                info!(name: "[HASH MATCH]", "[HASH MATCH] Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
                 worker_id
             }
             None => {
                 let worker_id = *self.hash_ring.values().next().unwrap(); // Wrap around to the first worker
-                info!(name: "[HASH WRAPAROUND]", "Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
+                info!(name: "[HASH WRAPAROUND]", "[HASH WRAPAROUND] Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
                 worker_id
             }
         }
