@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sha2 = "0.10.8"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"

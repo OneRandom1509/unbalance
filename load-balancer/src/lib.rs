@@ -1,6 +1,8 @@
 use core::fmt;
 use error::ThreadError;
+use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     sync::{mpsc, Arc, Mutex},
     thread,
 };
@@ -32,6 +34,7 @@ impl fmt::Display for Message {
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Option<mpsc::Sender<Job>>,
+    hash_ring: BTreeMap<u64, usize>, // Hash ring mapping hash values to worker IDs
 }
 
 /// Job:
@@ -62,16 +65,54 @@ impl ThreadPool {
         // The mutex will ensure that only one thread at a time is looking to receive more jobs
         let receiver = Arc::new(Mutex::new(receiver));
         let mut workers = Vec::with_capacity(size);
+        let mut hash_ring = BTreeMap::new();
 
         for id in 0..size {
             // Multiple ownership being done here as the Arc gets bumped up for each worker
             workers.push(Worker::new(id, Arc::clone(&receiver)));
+
+            // Add worker to the hash ring
+            let hash = Self::hash_worker_id(id);
+            hash_ring.insert(hash, id);
         }
         info!(name: "[LB THREADS INIT]", "{size} workers at your service!");
         Ok(ThreadPool {
             workers,
             sender: Some(sender),
+            hash_ring,
         })
+    }
+
+    /// Hash a worker ID to place it on the hash ring
+    fn hash_worker_id(id: usize) -> u64 {
+        let mut hasher = Sha256::new();
+        hasher.update(id.to_string());
+        let result = hasher.finalize();
+        let hash = u64::from_be_bytes(result[0..8].try_into().unwrap());
+        info!(name: "[HASH WORKER]", "Worker ID: {}, Hash: {}", id, hash);
+        hash
+    }
+
+    /// Find the nearest worker on the hash ring for a given client/request
+    pub fn get_worker_for_request(&self, client_id: &str) -> usize {
+        let mut hasher = Sha256::new();
+        hasher.update(client_id);
+        let result = hasher.finalize();
+        let hash = u64::from_be_bytes(result[0..8].try_into().unwrap());
+        info!(name: "[HASH CLIENT]", "Client ID: {}, Hash: {}", client_id, hash);
+
+        // Find the nearest worker on the hash ring
+        match self.hash_ring.range(hash..).next() {
+            Some((_, &worker_id)) => {
+                info!(name: "[HASH MATCH]", "Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
+                worker_id
+            }
+            None => {
+                let worker_id = *self.hash_ring.values().next().unwrap(); // Wrap around to the first worker
+                info!(name: "[HASH WRAPAROUND]", "Client Hash: {}, Assigned Worker ID: {}", hash, worker_id);
+                worker_id
+            }
+        }
     }
 
     /// Method for executing the given closure (anonymous function)
@@ -80,12 +121,16 @@ impl ThreadPool {
     /// It will have Send trait to transfer the closure from one thread to another, and it will also
     /// have a static lifetime as we don't know how long a process will take for its completion in
     /// the thread
-    pub fn execute<F>(&self, f: F)
+    pub fn execute<F>(&self, client_id: &str, f: F)
     where
         F: FnOnce() + Send + 'static,
     {
         // New job instance for the worker threads
         let job = Box::new(f);
+
+        // Find the appropriate worker for the client
+        let worker_id = self.get_worker_for_request(client_id);
+        info!(name: "[LB HASHING]", "Client {} assigned to worker {}", client_id, worker_id);
 
         // Unwrapping here in case the receiver does not receive the "job". This could happen in a
         // situation where all the threads stopped

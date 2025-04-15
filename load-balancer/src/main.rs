@@ -16,8 +16,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let worker: String = fs::read_to_string(addr_file).unwrap();
-    let mut worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
-    worker_list.remove(worker_list.len() - 1); // Removing the empty string
+    let worker_list: Vec<String> = worker.split("\n").map(|x| x.to_string()).collect();
     let num_workers = worker_list.len();
     info!(name: "[FILE]", "Read {} addresses from {} file", &num_workers, &addr_file);
 
@@ -37,20 +36,17 @@ fn main() {
     } else {
         info!(name: "[NO ARGS]", "No command line args given, resorting to default");
     }
-
-    let mut worker: usize = 0;
-
+    
     for stream in listener.incoming() {
         let stream = stream.unwrap();
+        let client_addr = stream.peer_addr().unwrap().to_string();
 
-        // think of a better way to handle this, cloning everything everytime is kinda bad
-        let worker_id = worker.clone();
-        let worker_list_cl = worker_list.clone();
-        pool.execute(move || {
-            handle_connection(stream, worker_id, worker_list_cl);
+        // Use consistent hashing to determine the worker ID
+        let worker_id = pool.get_worker_for_request(&client_addr);
+        let worker_list_c = worker_list.clone();
+        pool.execute(&client_addr, move || {
+            handle_connection(stream, worker_id, worker_list_c);
         });
-
-        worker = (worker + 1) % num_workers;
     }
     info!(name: "[LB SHUTDOWN]", "Shutting down.");
 }
